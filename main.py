@@ -88,7 +88,7 @@ async def add_book_to_user(user_id, book_title):
             conn.close()
 
 # Функция для получения рекомендаций книг на основе названия книги
-async def get_recommendations(book_title, offset=0):
+async def get_recommendations(book_title, offset):
     conn = None
     recommendations = []
     try:
@@ -106,7 +106,7 @@ async def get_recommendations(book_title, offset=0):
             ) AND b.book_title != %s
             GROUP BY b.book_title
             ORDER BY COUNT(*) DESC
-            LIMIT 5 OFFSET %s;
+            LIMIT 100 OFFSET %s;
         """, (book_title, book_title, offset))
 
         recommendations = cursor.fetchall()
@@ -176,12 +176,12 @@ async def recommend_books(message: types.Message):
     recommendations = await get_recommendations(book_title)
 
     if recommendations:
-        await send_recommendations(message.chat.id, recommendations)
+        await send_recommendations(message.chat.id, recommendations, book_title, 0)
     else:
         await message.reply("Извините, у меня нет рекомендаций для вас.")
 
 # Функция для отправки рекомендаций с кнопками "Вывести еще"
-async def send_recommendations(chat_id, recommendations, offset=0):
+async def send_recommendations(chat_id, recommendations, book_title, offset):
     limit = 5
     current_recommendations = recommendations[offset:offset + limit]
 
@@ -190,13 +190,13 @@ async def send_recommendations(chat_id, recommendations, offset=0):
 
         # Создаем клавиатуру с кнопкой "Вывести еще"
         inline_buttons = []
-        if len(recommendations) - offset - limit > 0:
-            inline_buttons = [
-                InlineKeyboardButton(
-                    text="Вывести еще",
-                    callback_data=f"show_more,{offset + limit}"
-                )
-            ]
+        #if len(recommendations) - offset - limit > 0:
+        inline_buttons = [
+            InlineKeyboardButton(
+                text="Вывести еще",
+                callback_data=f"show_more,{offset + limit},{book_title}"
+            )
+        ]
 
         # Передаем inline_keyboard в конструктор
         keyboard = InlineKeyboardMarkup(inline_keyboard=[inline_buttons])
@@ -210,17 +210,16 @@ async def send_recommendations(chat_id, recommendations, offset=0):
 @dp.callback_query(lambda callback_query: callback_query.data.startswith("show_more"))
 async def process_show_more(callback_query: types.CallbackQuery):
     """Обработчик кнопки "Вывести еще"."""
-    _, offset = callback_query.data.split(',')
+    _, offset, book_title = callback_query.data.split(',')
     offset = int(offset)
 
     telegram_id = callback_query.from_user.id
-    user_id = await get_user_id(telegram_id)
 
     # Получаем рекомендации
-    recommendations = await get_recommendations(user_id)
+    recommendations = await get_recommendations(book_title)
 
     # Отправляем следующие рекомендации
-    await send_recommendations(callback_query.message.chat.id, recommendations, offset)
+    await send_recommendations(callback_query.message.chat.id, recommendations, book_title, offset)
 
     # Уведомляем Telegram, что запрос обработан
     await bot.answer_callback_query(callback_query.id)
