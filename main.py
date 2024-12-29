@@ -88,7 +88,7 @@ async def add_book_to_user(user_id, book_title):
             conn.close()
 
 # Функция для получения рекомендаций книг на основе названия книги
-async def get_recommendations(book_title, offset=0):
+async def get_recommendations(book_title, offset):
     conn = None
     recommendations = []
     try:
@@ -190,13 +190,13 @@ async def send_recommendations(chat_id, recommendations, book_title, offset):
 
         # Создаем клавиатуру с кнопкой "Вывести еще"
         inline_buttons = []
-        if len(recommendations) - offset - limit > 0:
-            inline_buttons = [
-                InlineKeyboardButton(
-                    text="Вывести еще",
-                    callback_data=f"show_more,{offset + limit},{book_title}"
-                )
-            ]
+        #if len(recommendations) - offset - limit > 0:
+        inline_buttons = [
+            InlineKeyboardButton(
+                text="Вывести еще",
+                callback_data=f"show_more,{offset + limit},{book_title}"
+            )
+        ]
 
         # Передаем inline_keyboard в конструктор
         keyboard = InlineKeyboardMarkup(inline_keyboard=[inline_buttons])
